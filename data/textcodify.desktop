@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Text Codify
+GenericName=Text Codify
+Comment=Encode unstructured text
+Categories=Utility;Education;Manual-Processing
+Exec=textcodify
+Icon=application.png
+Terminal=false
+Type=Application
+Keywords=Annotation;Text;
+Encoding=UTF-8

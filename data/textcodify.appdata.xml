@@ -1,0 +1,43 @@
+
+​<?xml version="1.0" encoding="UTF-8"?>
+​<!-- Copyright 2013 First Lastname <your@email.com> -->
+​<component type="desktop-application">
+​  <id>com.github.fransheuvelmans.textcodify</id>
+​  <metadata_license>FSFAP</metadata_license>
+​  <project_license>Blue Oak Model License 1.0.0</project_license>
+​  <name>Text Codify</name>
+​  <summary>Encode unstructured text</summary>
+​
+​  <description>
+​    <p>
+        Encode text by annotating pieces of text and training
+        classifiers 
+​    </p>
+​  </description>
+​
+​  <launchable type="desktop-id">com.github.fransheuvelmans.textcodify.desktop</launchable>
+​
+​  <screenshots>
+​    <screenshot type="default">
+​      <caption>The options dialog</caption>
+​      <image>http://www.hughsie.com/en_US/main.png</image>
+​    </screenshot>
+​    <screenshot>
+​      <image>http://www.hughsie.com/en_US/preferences.png</image>
+​    </screenshot>
+​  </screenshots>
+​
+​  <url type="homepage">http://www.github.com/fransheuvelmans/textcodify</url>
+​
+​  <provides>
+​    <binary>textcodify</binary>
+​  </provides>
+​
+​  <releases>
+​    <release version="0.0.1" date="2019-04-12">
+​      <description>
+​        <p>Fixes issues X, Y and Z</p>
+​      </description>
+​    </release>
+​  </releases>
+​</component>
