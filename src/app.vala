@@ -4,6 +4,10 @@ using Gtk;
 public class TextcodeApp : Gtk.Application {
 
     private ViewFrame viewer;
+    private DocOverview doc_overview;
+    private Poppler.Document document;
+    private int index = 0;
+    private int max_index;
 
     public TextcodeApp () {
         Object (
@@ -22,7 +26,7 @@ public class TextcodeApp : Gtk.Application {
 
     protected override void activate () {
         var main_window = new Gtk.ApplicationWindow (this);
-        var doc_overview = new DocOverview ();
+        doc_overview = new DocOverview ();
         main_window.default_height = 600;
         main_window.default_width = 800;
         main_window.title = "textcodify";
@@ -32,14 +36,14 @@ public class TextcodeApp : Gtk.Application {
         Gtk.Box box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 5);
         box.pack_start (doc_overview.create_overview (), false, false, 0);
         viewer = new ViewFrame ();
-        doc_overview.l_button.clicked.connect (viewer.previous_page);
-        doc_overview.r_button.clicked.connect (viewer.next_page);
+        doc_overview.l_button.clicked.connect (this.previous_page);
+        doc_overview.r_button.clicked.connect (this.next_page);
         box.pack_start (viewer, true, true, 0);
         box.pack_start (createButton (), false, false, 0);
         main_window.add (box);
 
         var title_bar = new TextcodeHeader (main_window);
-        title_bar.open_file.connect (viewer.set_document);
+        title_bar.open_file.connect (this.load_single_document);
         main_window.set_titlebar (title_bar);
         main_window.key_press_event.connect (this.handle_key_event);
         main_window.show_all ();
@@ -47,9 +51,9 @@ public class TextcodeApp : Gtk.Application {
 
     private bool handle_key_event (Gdk.EventKey k) {
         if (k.keyval == Gdk.Key.Left) {
-            viewer.previous_page ();
+            this.previous_page ();
         } else if (k.keyval == Gdk.Key.Right) {
-            viewer.next_page ();
+            this.next_page ();
         }
         return false;
     }
@@ -57,5 +61,33 @@ public class TextcodeApp : Gtk.Application {
     public static int main (string[] args) {
         var app = new TextcodeApp ();
         return app.run (args);
+    }
+
+    private void load_single_document (string docloc) {
+        document = Controller.load_doc (docloc);
+        index = 0;
+        max_index = document.get_n_pages () - 1;
+        viewer.render_page (this.document.get_page (this.index));
+
+        doc_overview.clear_docs ();
+        string[] loc_parts = docloc.split ("/");
+        string name = loc_parts[loc_parts.length - 1];
+        string[] name_parts = name.split(".");
+        name = name_parts[0];
+        doc_overview.add_doc (name, document.get_n_pages ());
+    }
+
+    private void next_page () {
+        if (index < max_index) {
+            index++;
+            viewer.render_page (this.document.get_page (this.index));
+        }
+    }
+
+    private void previous_page () {
+        if (index > 0) {
+            index--;
+            viewer.render_page (this.document.get_page (this.index));
+        }
     }
 }
