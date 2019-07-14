@@ -33,7 +33,7 @@ public class DocOverview {
     public void add_doc (string name, int pages) {
         TreeIter insert_iter;
         store.append (out insert_iter);
-        store.set (insert_iter, 0, name, 1, pages);
+        store.set (insert_iter, 0, name[0:8], 1, pages);
     }
 
     public void clear_docs () {

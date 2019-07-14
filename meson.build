@@ -10,7 +10,7 @@ dependencies = [
 sources = files(
     'src/app.vala',
     'src/header.vala',
-    'src/viewframe.vala',
+    'src/viewwindow.vala',
     'src/docview.vala',
     'src/controller.vala' 
 )

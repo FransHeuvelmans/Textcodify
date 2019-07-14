@@ -3,7 +3,7 @@ using Gtk;
 
 public class TextcodeApp : Gtk.Application {
 
-    private ViewFrame viewer;
+    private ViewWindow viewer;
     private DocOverview doc_overview;
     private Poppler.Document document;
     private int index = 0;
@@ -35,7 +35,8 @@ public class TextcodeApp : Gtk.Application {
 
         Gtk.Box box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 5);
         box.pack_start (doc_overview.create_overview (), false, false, 0);
-        viewer = new ViewFrame ();
+        viewer = new ViewWindow ();
+        viewer.add_events (Gdk.EventMask.ALL_EVENTS_MASK);
         doc_overview.l_button.clicked.connect (this.previous_page);
         doc_overview.r_button.clicked.connect (this.next_page);
         box.pack_start (viewer, true, true, 0);
@@ -46,10 +47,12 @@ public class TextcodeApp : Gtk.Application {
         title_bar.open_file.connect (this.load_single_document);
         main_window.set_titlebar (title_bar);
         main_window.key_press_event.connect (this.handle_key_event);
+        // viewer.button_release_event.connect (this.handle_click_event);
         main_window.show_all ();
     }
 
     private bool handle_key_event (Gdk.EventKey k) {
+        print ("c");
         if (k.keyval == Gdk.Key.Left) {
             this.previous_page ();
         } else if (k.keyval == Gdk.Key.Right) {
@@ -57,6 +60,13 @@ public class TextcodeApp : Gtk.Application {
         }
         return false;
     }
+
+    // private bool handle_click_event (Gdk.EventButton b) {
+    // double x_loc = b.x;
+    // double y_loc = b.y;
+    // print (@"Button pressed x: $x_loc , y: $y_loc");
+    // return false;
+    // }
 
     public static int main (string[] args) {
         var app = new TextcodeApp ();
@@ -67,12 +77,12 @@ public class TextcodeApp : Gtk.Application {
         document = Controller.load_doc (docloc);
         index = 0;
         max_index = document.get_n_pages () - 1;
-        viewer.render_page (this.document.get_page (this.index));
+        viewer.render_page.begin (this.document.get_page (this.index));
 
         doc_overview.clear_docs ();
         string[] loc_parts = docloc.split ("/");
         string name = loc_parts[loc_parts.length - 1];
-        string[] name_parts = name.split(".");
+        string[] name_parts = name.split (".");
         name = name_parts[0];
         doc_overview.add_doc (name, document.get_n_pages ());
     }
@@ -80,14 +90,14 @@ public class TextcodeApp : Gtk.Application {
     private void next_page () {
         if (index < max_index) {
             index++;
-            viewer.render_page (this.document.get_page (this.index));
+            viewer.render_page.begin (this.document.get_page (this.index));
         }
     }
 
     private void previous_page () {
         if (index > 0) {
             index--;
-            viewer.render_page (this.document.get_page (this.index));
+            viewer.render_page.begin (this.document.get_page (this.index));
         }
     }
 }
