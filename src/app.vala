@@ -3,11 +3,18 @@ using Gtk;
 
 public class TextcodeApp : Gtk.Application {
 
+    public struct MouseLoc {
+        double x;
+        double y;
+    }
+
     private ViewWindow viewer;
     private DocOverview doc_overview;
     private Poppler.Document document;
     private int index = 0;
     private int max_index;
+    private bool left_mouse_pressed = false;
+    private MouseLoc oldMouseLoc;
 
     public TextcodeApp () {
         Object (
@@ -46,27 +53,80 @@ public class TextcodeApp : Gtk.Application {
         var title_bar = new TextcodeHeader (main_window);
         title_bar.open_file.connect (this.load_single_document);
         main_window.set_titlebar (title_bar);
-        main_window.key_press_event.connect (this.handle_key_event);
-        // viewer.button_release_event.connect (this.handle_click_event);
+        main_window.key_press_event.connect (this.handle_key_pressevent);
+        main_window.key_release_event.connect (this.handle_key_releaseevent);
+        viewer.scroll_event.connect (this.handle_viewer_scroll_event);
+        viewer.button_release_event.connect (this.handle_clickup_event);
+        viewer.button_press_event.connect (this.handle_clickdown_event);
+        viewer.motion_notify_event.connect (this.handle_move_event);
         main_window.show_all ();
     }
 
-    private bool handle_key_event (Gdk.EventKey k) {
-        print ("c");
+    // ---- Input event handling ----
+
+    private bool handle_key_pressevent (Gdk.EventKey k) {
+        // Moving Pages
         if (k.keyval == Gdk.Key.Left) {
             this.previous_page ();
         } else if (k.keyval == Gdk.Key.Right) {
             this.next_page ();
+        } else if (k.keyval == Gdk.Key.Control_L) {
+            viewer.set_active_zooming (true);
         }
         return false;
     }
 
-    // private bool handle_click_event (Gdk.EventButton b) {
-    // double x_loc = b.x;
-    // double y_loc = b.y;
-    // print (@"Button pressed x: $x_loc , y: $y_loc");
-    // return false;
-    // }
+    private bool handle_key_releaseevent (Gdk.EventKey k) {
+        if (k.keyval == Gdk.Key.Control_L) {
+            viewer.set_active_zooming (false);
+        }
+        return false;
+    }
+
+    // TODO: couldnt hook key events on the viewer window
+    // therefore all of the event handling is part of the
+    // main app (not my preferred design)
+    private bool handle_viewer_scroll_event (Gdk.EventScroll e) {
+        if (e.direction == Gdk.ScrollDirection.DOWN) {
+            viewer.zoom_up ();
+        } else if (e.direction == Gdk.ScrollDirection.UP) {
+            viewer.zoom_down ();
+        } else if (e.direction == Gdk.ScrollDirection.SMOOTH) {
+            double x_d;
+            double y_d;
+            e.get_scroll_deltas (out x_d, out y_d);
+            viewer.smooth_zoom (-y_d);
+        }
+        return false;
+    }
+
+    private bool handle_clickup_event (Gdk.EventButton b) {
+        // TODO: Also call the main word-finding process here
+        if (b.button == Gdk.BUTTON_PRIMARY) {
+            left_mouse_pressed = false;
+        }
+        return false;
+    }
+
+    private bool handle_clickdown_event (Gdk.EventButton b) {
+        if (b.button == Gdk.BUTTON_PRIMARY) {
+            left_mouse_pressed = true;
+        }
+        return false;
+    }
+
+    private bool handle_move_event (Gdk.EventMotion m) {
+        if (left_mouse_pressed) {
+            oldMouseLoc = MouseLoc () {
+                x = m.x,
+                y = m.y
+            };
+            print (@"x:$(m.x) x_r:$(m.x_root) y:$(m.y) y_r:$(m.y_root)\n");
+        }
+        return false;
+    }
+
+    // ---- ----
 
     public static int main (string[] args) {
         var app = new TextcodeApp ();

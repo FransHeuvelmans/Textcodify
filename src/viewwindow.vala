@@ -19,10 +19,6 @@ public class ViewWindow : ScrolledWindow {
         eventBox.add_events (Gdk.EventMask.ALL_EVENTS_MASK);
         eventBox.add (image);
         this.add (eventBox);
-        this.set_valign (Gtk.Align.CENTER);
-        this.key_press_event.connect (handle_key_press_event);
-        this.key_release_event.connect (handle_key_release_event);
-        this.scroll_event.connect (handle_scroll_event);
         this.show_all ();
     }
 
@@ -33,12 +29,6 @@ public class ViewWindow : ScrolledWindow {
         page.get_size (out page_width, out page_height);
         int width = (int) (zoom * page_width);
         int height = (int) (zoom * page_height);
-
-        // Adjust the scrolled-window
-        this.width_request = (int) page_width + marginSpace;
-        this.height_request = (int) page_height + marginSpace;
-        this.set_valign (Gtk.Align.CENTER);
-        this.set_halign (Gtk.Align.CENTER);
 
         // Creating a surface/context to write the page to
         var surface = new Cairo.ImageSurface (Cairo.Format.ARGB32, width, height);
@@ -53,46 +43,58 @@ public class ViewWindow : ScrolledWindow {
         lastRenderedPage = page;
     }
 
-    private void render_last_page () {
+    public void set_active_zooming (bool zoom) {
         if (lastRenderedPage != null) {
-            render_page.begin (lastRenderedPage);
+            busyZooming = zoom;
         }
     }
 
-    public bool handle_key_press_event (Gdk.EventKey k) {
-        print ("+");
-        if (k.keyval == Gdk.Key.Control_L) {
-            busyZooming = true;
-        }
-        return false;
-    }
-
-    public bool handle_key_release_event (Gdk.EventKey k) {
-        print ("-");
-        if (k.keyval == Gdk.Key.Control_L) {
-            busyZooming = false;
-        }
-        return false;
-    }
-
-    public bool handle_scroll_event (Gdk.EventScroll e) {
-        print (".");
-        if ((e.direction == Gdk.ScrollDirection.DOWN) && (busyZooming == true)) {
+    public void zoom_down () {
+        if (busyZooming) {
             zoom -= 0.1;
             render_last_page ();
-        } else if ((e.direction == Gdk.ScrollDirection.UP) && (busyZooming == true)) {
+        }
+    }
+
+    public void zoom_up () {
+        if (busyZooming) {
             zoom += 0.1;
             render_last_page ();
-        } else if ((e.direction == Gdk.ScrollDirection.SMOOTH) && (busyZooming == true)) {
-            double x_d;
-            double y_d;
-            e.get_scroll_deltas (out x_d, out y_d);
+        }
+    }
+
+    public void adjust_location (double x_d, double y_d) {
+        Adjustment y = this.get_vadjustment ();
+        double new_y = y.value + y_d;
+        if (y.lower < new_y < y.upper) {
+            y.value = new_y;
+        }
+        this.set_vadjustment (y);
+
+        Adjustment x = this.get_hadjustment ();
+        double new_x = x.value + x_d;
+        if (x.lower < new_x < x.upper) {
+            x.value = new_x;
+        }
+        this.set_hadjustment (x);
+    }
+
+    /**
+     * For smooth scrolling. Works only in y-axis atm
+     */
+    public void smooth_zoom (double y_d) {
+        if (busyZooming) {
             double new_zoom = zoom + (0.1 * y_d);
-            if (new_zoom > 0) {
+            if (new_zoom > 0.1) {
                 zoom = new_zoom;
             }
             render_last_page ();
         }
-        return false;
+    }
+
+    private void render_last_page () {
+        if (lastRenderedPage != null) {
+            render_page.begin (lastRenderedPage);
+        }
     }
 }
