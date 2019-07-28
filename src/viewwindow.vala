@@ -7,7 +7,6 @@ public class ViewWindow : ScrolledWindow {
     private Image image;
     private EventBox eventBox;
     private double zoom = 1;
-    private int marginSpace = 5;
     private bool busyZooming = false;
     private Poppler.Page lastRenderedPage;
 

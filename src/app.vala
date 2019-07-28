@@ -11,10 +11,12 @@ public class TextcodeApp : Gtk.Application {
     private ViewWindow viewer;
     private DocOverview doc_overview;
     private Poppler.Document document;
+    private DocTools doc_analysis;
     private int index = 0;
     private int max_index;
     private bool left_mouse_pressed = false;
     private MouseLoc oldMouseLoc;
+    private double mouseMoveSpeed = 0.8;
 
     public TextcodeApp () {
         Object (
@@ -72,6 +74,12 @@ public class TextcodeApp : Gtk.Application {
             this.next_page ();
         } else if (k.keyval == Gdk.Key.Control_L) {
             viewer.set_active_zooming (true);
+        } else if (k.keyval == Gdk.Key.Home) {
+            this.start_page ();
+        } else if (k.keyval == Gdk.Key.End) {
+            this.end_page ();
+        } else if (k.keyval == Gdk.Key.p) {
+            this.analyze_page ();
         }
         return false;
     }
@@ -104,7 +112,13 @@ public class TextcodeApp : Gtk.Application {
         // TODO: Also call the main word-finding process here
         if (b.button == Gdk.BUTTON_PRIMARY) {
             left_mouse_pressed = false;
+            if (this.doc_analysis != null) {
+                this.doc_analysis.print_closest_text (b.x, b.y);
+            } else {
+                print ("Page has not been analyzed\n");
+            }
         }
+        print (@"Mouse clicked: x=$(b.x) y=$(b.y)\n");
         return false;
     }
 
@@ -117,12 +131,13 @@ public class TextcodeApp : Gtk.Application {
 
     private bool handle_move_event (Gdk.EventMotion m) {
         if (left_mouse_pressed) {
-            oldMouseLoc = MouseLoc () {
-                x = m.x,
-                y = m.y
-            };
-            print (@"x:$(m.x) x_r:$(m.x_root) y:$(m.y) y_r:$(m.y_root)\n");
+            viewer.adjust_location (mouseMoveSpeed * (m.x - oldMouseLoc.x), mouseMoveSpeed * (m.y - oldMouseLoc.y));
+            // TODO: Turning it around is more natural (hand tool) but _VERY_ janky
         }
+        oldMouseLoc = MouseLoc () {
+            x = m.x,
+            y = m.y
+        };
         return false;
     }
 
@@ -147,6 +162,10 @@ public class TextcodeApp : Gtk.Application {
         doc_overview.add_doc (name, document.get_n_pages ());
     }
 
+    private void analyze_page () {
+        this.doc_analysis = new DocTools (this.document.get_page (this.index));
+    }
+
     private void next_page () {
         if (index < max_index) {
             index++;
@@ -159,5 +178,15 @@ public class TextcodeApp : Gtk.Application {
             index--;
             viewer.render_page.begin (this.document.get_page (this.index));
         }
+    }
+
+    private void start_page () {
+        index = 0;
+        viewer.render_page.begin (this.document.get_page (this.index));
+    }
+
+    private void end_page () {
+        index = max_index;
+        viewer.render_page.begin (this.document.get_page (this.index));
     }
 }

@@ -7,6 +7,7 @@ public class DocOverview {
 
     private TreeView tree_view;
     private Gtk.ListStore store;
+    private int maxDocNameLength = 10;
 
     public DocOverview () {
         button_box = new Box (Orientation.HORIZONTAL, 2);
@@ -33,7 +34,13 @@ public class DocOverview {
     public void add_doc (string name, int pages) {
         TreeIter insert_iter;
         store.append (out insert_iter);
-        store.set (insert_iter, 0, name[0:8], 1, pages);
+        string showName;
+        if (name.length > maxDocNameLength) {
+            showName = name[0:maxDocNameLength];
+        } else {
+            showName = name;
+        }
+        store.set (insert_iter, 0, showName, 1, pages);
     }
 
     public void clear_docs () {
