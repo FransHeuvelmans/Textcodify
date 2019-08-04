@@ -2,7 +2,8 @@ using Gee;
 using Poppler;
 
 
-public class DocTools {
+public class PageAnalysis {
+    // Extra tools around Poppler pages
 
     public struct CenterPoint {
         double x;
@@ -12,27 +13,22 @@ public class DocTools {
     private Page current_page;
     private Rectangle[] current_textboxes;
 
-    public DocTools (Page p) {
+    public PageAnalysis (Page p) {
         print ("Analyzing page\n");
         this.current_page = p;
         this.current_page.get_text_layout (out this.current_textboxes);
     }
 
-    public ~DocTools() {
-        g_free (current_textboxes);
-    }
+    // current_textboxes need manual freeing but this is being done
+    // by some other process
+    //  ~PageAnalysis () {
+    //      g_free (current_textboxes);
+    //  }
 
-    public void print_textboxes () {
-        foreach (Rectangle r in current_textboxes) {
-            print (@"Rect - x1: $(r.x1) y1: $(r.y1) x2: $(r.x2) y2: $(r.y2)\n");
-            string txt = this.current_page.get_selected_text (
-                SelectionStyle.WORD, r
-            );
-            print (@"txt - $txt \n");
-        }
-    }
-
-    public void print_closest_text (double x, double y) {
+    /**
+     * Get wordlevel-text for a location on a Poppler page
+     */
+    public string get_closest_text (double x, double y) {
         // Go over all boxes and collect the ones which box in the point
         var enboxing = new ArrayList<Rectangle?> ();
         foreach (Rectangle r in current_textboxes) {
@@ -59,19 +55,25 @@ public class DocTools {
                 }
             }
             Rectangle dr = enboxing[idx_smallest];
-            print (@"debug smallest Rect - x1: $(dr.x1) y1: $(dr.y1) x2: $(dr.x2) y2: $(dr.y2)\n");
+            /* Could be a rectangle around a letter box at
+             * this point. Important if we want to add box
+             * information later
+             */
             txt = this.current_page.get_selected_text (
                 SelectionStyle.WORD,
                 dr
             );
         } else {
-            // if list is empty, get create a list of "middle-points" of boxes
-            // get the box with the middle-point closest to the point
+            // Not clicked in a box -> fall back on closest
             txt = this.text_closest_centerpoint (x, y);
         }
-        print (@"txt - $txt \n");
+        return txt;
     }
 
+    /**
+     * Find the textbox closest to a given point by finding the closest
+     * box centerpoints
+     */
     private string text_closest_centerpoint (double x, double y) {
         var center_points = new ArrayList<CenterPoint?> ();
         foreach (Rectangle r in current_textboxes) {
@@ -96,7 +98,6 @@ public class DocTools {
             }
         }
         Rectangle dr = current_textboxes[idx_closest];
-        print (@"debug closest Rect - x1: $(dr.x1) y1: $(dr.y1) x2: $(dr.x2) y2: $(dr.y2)\n");
         return this.current_page.get_selected_text (
             SelectionStyle.WORD, dr
         );

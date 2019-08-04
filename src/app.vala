@@ -11,10 +11,10 @@ public class TextcodeApp : Gtk.Application {
     private ViewWindow viewer;
     private DocOverview doc_overview;
     private Poppler.Document document;
-    private DocTools doc_analysis;
+    private PageAnalysis doc_analysis = null;
     private int index = 0;
     private int max_index;
-    private bool left_mouse_pressed = false;
+    private bool main_mousebtn_pressed = false;
     private MouseLoc oldMouseLoc;
     private double mouseMoveSpeed = 0.8;
 
@@ -25,7 +25,7 @@ public class TextcodeApp : Gtk.Application {
         );
     }
 
-    private Button createButton () {
+    private Button create_button () {
         var button = new Button.with_label ("Click me!");
         button.clicked.connect (() => {
             button.label = "What has happened";
@@ -49,7 +49,7 @@ public class TextcodeApp : Gtk.Application {
         doc_overview.l_button.clicked.connect (this.previous_page);
         doc_overview.r_button.clicked.connect (this.next_page);
         box.pack_start (viewer, true, true, 0);
-        box.pack_start (createButton (), false, false, 0);
+        box.pack_start (create_button (), false, false, 0);
         main_window.add (box);
 
         var title_bar = new TextcodeHeader (main_window);
@@ -111,26 +111,28 @@ public class TextcodeApp : Gtk.Application {
     private bool handle_clickup_event (Gdk.EventButton b) {
         // TODO: Also call the main word-finding process here
         if (b.button == Gdk.BUTTON_PRIMARY) {
-            left_mouse_pressed = false;
+            main_mousebtn_pressed = false;
+        } else if (b.button == Gdk.BUTTON_SECONDARY) {
             if (this.doc_analysis != null) {
-                this.doc_analysis.print_closest_text (b.x, b.y);
+                MouseLoc docloc = this.viewer.convert_click_loc (b.x, b.y);
+                string sometext = this.doc_analysis.get_closest_text (docloc.x, docloc.y);
+                print (@"txt: $sometext");
             } else {
                 print ("Page has not been analyzed\n");
             }
         }
-        print (@"Mouse clicked: x=$(b.x) y=$(b.y)\n");
         return false;
     }
 
     private bool handle_clickdown_event (Gdk.EventButton b) {
         if (b.button == Gdk.BUTTON_PRIMARY) {
-            left_mouse_pressed = true;
+            main_mousebtn_pressed = true;
         }
         return false;
     }
 
     private bool handle_move_event (Gdk.EventMotion m) {
-        if (left_mouse_pressed) {
+        if (main_mousebtn_pressed) {
             viewer.adjust_location (mouseMoveSpeed * (m.x - oldMouseLoc.x), mouseMoveSpeed * (m.y - oldMouseLoc.y));
             // TODO: Turning it around is more natural (hand tool) but _VERY_ janky
         }
@@ -163,13 +165,14 @@ public class TextcodeApp : Gtk.Application {
     }
 
     private void analyze_page () {
-        this.doc_analysis = new DocTools (this.document.get_page (this.index));
+        this.doc_analysis = new PageAnalysis (this.document.get_page (this.index));
     }
 
     private void next_page () {
         if (index < max_index) {
             index++;
             viewer.render_page.begin (this.document.get_page (this.index));
+            this.doc_analysis = null;
         }
     }
 
@@ -177,6 +180,7 @@ public class TextcodeApp : Gtk.Application {
         if (index > 0) {
             index--;
             viewer.render_page.begin (this.document.get_page (this.index));
+            this.doc_analysis = null;
         }
     }
 

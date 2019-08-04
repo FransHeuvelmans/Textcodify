@@ -15,7 +15,7 @@ sources = files(
     'src/viewwindow.vala',
     'src/docview.vala',
     'src/controller.vala',
-    'src/doctools.vala'
+    'src/pageanalysis.vala'
 )
 
 executable(meson.project_name(), sources, dependencies: dependencies, install: true)

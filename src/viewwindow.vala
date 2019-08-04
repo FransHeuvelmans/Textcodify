@@ -96,4 +96,53 @@ public class ViewWindow : ScrolledWindow {
             render_page.begin (lastRenderedPage);
         }
     }
+
+    /**
+     * Convert the click location in the viewwindow to where it
+     * would be on the pdf-file
+     */
+    public TextcodeApp.MouseLoc convert_click_loc (double x, double y) {
+        // Widget and image sizes
+        Gdk.Pixbuf pb = this.image.get_pixbuf ();
+        int wid_width = this.eventBox.get_allocated_width ();
+        int wid_height = this.eventBox.get_allocated_height ();
+
+        // calculate where the mouse should be on the image
+        // (widget -> image loc)
+        int diff;
+        double x_diff;
+        double x_out;
+        if (wid_width > pb.width) {
+            diff = wid_width - pb.width;
+            x_diff = (double) diff / 2;
+            x_out = x - x_diff;
+            if (x_out < 0) {
+                x_out = 0;
+            }
+        } else {
+            x_out = x;
+        }
+        double y_diff;
+        double y_out;
+        if (wid_height > pb.height) {
+            diff = wid_height - pb.height;
+            y_diff = (double) (diff / 2);
+            y_out = y - y_diff;
+            if (y_out < 0) {
+                y_out = 0;
+            }
+        } else {
+            y_out = y;
+        }
+
+        // calculate where it should be on the page
+        // (image loc -> original page loc)
+        x_out = x_out / this.zoom;
+        y_out = y_out / this.zoom;
+        var areturn = TextcodeApp.MouseLoc () {
+            x = x_out,
+            y = y_out
+        };
+        return areturn;
+    }
 }
