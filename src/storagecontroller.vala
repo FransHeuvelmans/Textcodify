@@ -1,6 +1,6 @@
 using Poppler;
 
-public class Controller {
+public class StorageController {
 
     private static string password = "";
 

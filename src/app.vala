@@ -10,6 +10,8 @@ public class TextcodeApp : Gtk.Application {
 
     private ViewWindow viewer;
     private DocOverview doc_overview;
+    private AnnotationOverview anno_overview;
+    private AnnotationController anno_controller;
     private Poppler.Document document;
     private PageAnalysis doc_analysis = null;
     private int index = 0;
@@ -23,19 +25,14 @@ public class TextcodeApp : Gtk.Application {
             application_id: "textcodify",
             flags : ApplicationFlags.FLAGS_NONE
         );
-    }
-
-    private Button create_button () {
-        var button = new Button.with_label ("Click me!");
-        button.clicked.connect (() => {
-            button.label = "What has happened";
-        });
-        return button;
+        this.anno_controller = new AnnotationController (12);
     }
 
     protected override void activate () {
         var main_window = new Gtk.ApplicationWindow (this);
         doc_overview = new DocOverview ();
+        anno_overview = new AnnotationOverview (this.anno_controller.get_current_state ());
+        this.anno_controller.set_selection_ref (anno_overview.get_selection ());
         main_window.default_height = 600;
         main_window.default_width = 800;
         main_window.title = "textcodify";
@@ -49,7 +46,7 @@ public class TextcodeApp : Gtk.Application {
         doc_overview.l_button.clicked.connect (this.previous_page);
         doc_overview.r_button.clicked.connect (this.next_page);
         box.pack_start (viewer, true, true, 0);
-        box.pack_start (create_button (), false, false, 0);
+        box.pack_start (anno_overview.create_overview (), false, false, 0);
         main_window.add (box);
 
         var title_bar = new TextcodeHeader (main_window);
@@ -87,6 +84,13 @@ public class TextcodeApp : Gtk.Application {
     private bool handle_key_releaseevent (Gdk.EventKey k) {
         if (k.keyval == Gdk.Key.Control_L) {
             viewer.set_active_zooming (false);
+        } else if (k.keyval == Gdk.Key.q) {
+            this.anno_controller.add_annotation_type ("test1");
+            this.anno_overview.set_model (this.anno_controller.get_current_state ());
+            print("type added\n");
+        } else if (k.keyval == Gdk.Key.w) {
+            this.anno_controller.add_annotation(1, "onnat1");
+            print("annot added\n");
         }
         return false;
     }
@@ -151,7 +155,7 @@ public class TextcodeApp : Gtk.Application {
     }
 
     private void load_single_document (string docloc) {
-        document = Controller.load_doc (docloc);
+        document = StorageController.load_doc (docloc);
         index = 0;
         max_index = document.get_n_pages () - 1;
         viewer.render_page.begin (this.document.get_page (this.index));

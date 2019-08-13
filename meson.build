@@ -6,6 +6,7 @@ dependencies = [
     dependency('gtk+-3.0'),
     dependency('poppler-glib'),
     dependency('gee-0.8'),
+    dependency('sqlite3'),
     meson.get_compiler('c').find_library('m', required: false),
 ]
 
@@ -14,7 +15,9 @@ sources = files(
     'src/header.vala',
     'src/viewwindow.vala',
     'src/docview.vala',
-    'src/controller.vala',
+    'src/storagecontroller.vala',
+    'src/annocontroller.vala',
+    'src/annoview.vala',
     'src/pageanalysis.vala'
 )
 
