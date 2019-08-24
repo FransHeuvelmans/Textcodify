@@ -8,6 +8,7 @@ public class TextcodeApp : Gtk.Application {
         double y;
     }
 
+    private Gtk.ApplicationWindow main_window;
     private ViewWindow viewer;
     private DocOverview doc_overview;
     private AnnotationOverview anno_overview;
@@ -29,7 +30,7 @@ public class TextcodeApp : Gtk.Application {
     }
 
     protected override void activate () {
-        var main_window = new Gtk.ApplicationWindow (this);
+        main_window = new Gtk.ApplicationWindow (this);
         doc_overview = new DocOverview ();
         anno_overview = new AnnotationOverview (this.anno_controller.get_current_state ());
         this.anno_controller.set_selection_ref (anno_overview.get_selection ());
@@ -38,26 +39,33 @@ public class TextcodeApp : Gtk.Application {
         main_window.title = "textcodify";
         main_window.window_position = WindowPosition.CENTER;
         main_window.destroy.connect (Gtk.main_quit);
+        main_window.key_press_event.connect (this.handle_key_pressevent);
+        main_window.key_release_event.connect (this.handle_key_releaseevent);
 
         Gtk.Box box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 5);
+
         box.pack_start (doc_overview.create_overview (), false, false, 0);
-        viewer = new ViewWindow ();
-        viewer.add_events (Gdk.EventMask.ALL_EVENTS_MASK);
         doc_overview.l_button.clicked.connect (this.previous_page);
         doc_overview.r_button.clicked.connect (this.next_page);
+
+        viewer = new ViewWindow ();
+        viewer.add_events (Gdk.EventMask.ALL_EVENTS_MASK);
         box.pack_start (viewer, true, true, 0);
+        viewer.scroll_event.connect (this.handle_viewer_scroll_event);
+        viewer.button_release_event.connect (this.handle_clickup_event);
+        viewer.button_press_event.connect (this.handle_clickdown_event);
+        viewer.motion_notify_event.connect (this.handle_move_event);
+
         box.pack_start (anno_overview.create_overview (), false, false, 0);
+        anno_overview.new_annotation_type.clicked.connect (
+            this.new_annotation_dialog
+        );
         main_window.add (box);
 
         var title_bar = new TextcodeHeader (main_window);
         title_bar.open_file.connect (this.load_single_document);
         main_window.set_titlebar (title_bar);
-        main_window.key_press_event.connect (this.handle_key_pressevent);
-        main_window.key_release_event.connect (this.handle_key_releaseevent);
-        viewer.scroll_event.connect (this.handle_viewer_scroll_event);
-        viewer.button_release_event.connect (this.handle_clickup_event);
-        viewer.button_press_event.connect (this.handle_clickdown_event);
-        viewer.motion_notify_event.connect (this.handle_move_event);
+
         main_window.show_all ();
     }
 
@@ -84,13 +92,9 @@ public class TextcodeApp : Gtk.Application {
     private bool handle_key_releaseevent (Gdk.EventKey k) {
         if (k.keyval == Gdk.Key.Control_L) {
             viewer.set_active_zooming (false);
-        } else if (k.keyval == Gdk.Key.q) {
-            this.anno_controller.add_annotation_type ("test1");
-            this.anno_overview.set_model (this.anno_controller.get_current_state ());
-            print("type added\n");
         } else if (k.keyval == Gdk.Key.w) {
-            this.anno_controller.add_annotation(1, "onnat1");
-            print("annot added\n");
+            this.anno_controller.add_annotation (1, "onnat1");
+            print ("annot added\n");
         }
         return false;
     }
@@ -170,6 +174,35 @@ public class TextcodeApp : Gtk.Application {
 
     private void analyze_page () {
         this.doc_analysis = new PageAnalysis (this.document.get_page (this.index));
+    }
+
+    private void new_annotation_dialog () {
+        var diag_flags = DialogFlags.DESTROY_WITH_PARENT | DialogFlags.MODAL;
+        var diag = new Dialog.with_buttons (
+            "New annotation type",
+            main_window, diag_flags,
+            "ok", ResponseType.OK,
+            "no", ResponseType.NO
+        );
+        diag.default_width = 400;
+        Box content = diag.get_content_area ();
+        var entry_label = new Label ("Annotation name:");
+        content.pack_start (entry_label, false, false, 0);
+        var entry_field = new Entry ();
+        entry_field.text = "annotation1";
+        content.pack_start (entry_field, false, false, 0);
+        diag.response.connect (this.new_annotation_reaction);
+        diag.show_all ();
+    }
+
+    private void new_annotation_reaction (Dialog diag, int resp) {
+        if (resp == ResponseType.OK) {
+            Box content = diag.get_content_area ();
+            List<weak Widget> widgets = content.get_children ();
+            Entry field_output = (Entry) widgets.nth_data(1);
+            this.anno_controller.add_annotation_type (field_output.text);
+        }
+        diag.destroy ();
     }
 
     private void next_page () {
