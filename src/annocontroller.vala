@@ -19,7 +19,7 @@ public class AnnotationController {
     }
 
     public void set_selection_ref (TreeSelection selection) {
-        this.selection_ref = selection;
+        selection_ref = selection;
     }
 
     /* Clear the store and create a fresh one 
@@ -113,7 +113,7 @@ public class AnnotationController {
         // Assume single output
         TreeIter out_iter;
         TreeModel model;
-        bool is_select = this.selection_ref.get_selected (out model, out out_iter);
+        bool is_select = selection_ref.get_selected (out model, out out_iter);
         if (!is_select) {
             return null;
         }
@@ -139,9 +139,9 @@ public class AnnotationController {
     public void remove_current_selection () {
         TreeIter out_iter;
         TreeModel model;
-        bool is_select = this.selection_ref.get_selected (out model, out out_iter);
+        bool is_select = selection_ref.get_selected (out model, out out_iter);
         if (is_select) {
-            this.store.remove (ref out_iter);
+            store.remove (ref out_iter);
         }
     }
 
@@ -149,6 +149,6 @@ public class AnnotationController {
      * Retrieve the current Treestore for viewing
      */
     public TreeStore get_current_state () {
-        return this.store;
+        return store;
     }
 }

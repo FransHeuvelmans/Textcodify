@@ -23,10 +23,15 @@ public class TextcodeHeader : HeaderBar {
         var store_sqlite_button = new Button.from_icon_name (
             "media-floppy", IconSize.LARGE_TOOLBAR);
         store_sqlite_button.valign = Align.CENTER;
+        store_sqlite_button.clicked.connect (save_to_db_clicked);
 
         pack_start (open_single_doc_button);
         pack_start (open_folder_button);
         pack_end (store_sqlite_button);
+    }
+
+    public void save_to_db_clicked () {
+        store_sqlite ();
     }
 
     public void open_single_doc_clicked () {

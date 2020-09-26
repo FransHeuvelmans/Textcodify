@@ -191,7 +191,6 @@ public class StorageController {
         int found = -1;
         string query = @"SELECT id, hash, name FROM documents WHERE " +
             @"hash = '$doc_hash' AND name = '$doc_title';";
-        print ("checkQuery: " + query + "\n");
         int rc = current_db.prepare_v2 (query, query.length, out check_stmt, null);
         if (rc != Sqlite.OK) {
             printerr ("SQL error check_doc %d: %s\n", rc, current_db.errmsg ());
@@ -243,10 +242,40 @@ public class StorageController {
         return map;
     }
 
+    private void _cleandb(int db_doc_id) {
+        const string query = """
+        DELETE FROM annotations as an
+        WHERE an.page_id in 
+            (SELECT 
+                p.id as page_id
+            FROM pages p
+            JOIN documents d
+            ON p.doc_id = d.id
+            WHERE d.id = ?001);""";
+        Statement delete_anno_stmt;
+        int rc = current_db.prepare_v2 (query, query.length, out delete_anno_stmt);
+        if (rc != Sqlite.OK) {
+            printerr ("SQL error anno_delete %d: %s\n", rc, current_db.errmsg ());
+            return;
+        }
+        int doc_id_pos = delete_anno_stmt.bind_parameter_index ("?001");
+        delete_anno_stmt.bind_int (doc_id_pos, db_doc_id);
+        rc = delete_anno_stmt.step ();
+        switch (rc) {
+            case Sqlite.DONE:
+                break;
+            default:
+                printerr ("Error: %d, %s\n", rc, current_db.errmsg ());
+                break;
+        }
+        print ("Deleted old annotations\n");
+        return;
+    }
+
     /**
      * Store a list of annotations in the db
      */
-    public int _anno2db (LinkedList<AnnotationDb?> annotations, bool overwrite_modus) {
+    private int _anno2db (LinkedList<AnnotationDb?> annotations) {
         const string inannoquery = "INSERT INTO annotations (page_id, page_nr, anno, anno_full_line," +
         "anno_type) VALUES (?001, ?002, ?003, ?004, ?005)";
         Statement anno_insert_statement;
@@ -288,6 +317,10 @@ public class StorageController {
     public bool store_annotations_to_db (int db_doc_id, Gtk.TreeStore annotation_info, bool overwrite_modus) {
         /* if modus_overwrite -> first delete all annotations for this document_id
          * else append_modus -> add all new annotations but leave the old ones */
+        if (overwrite_modus) {
+            _cleandb (db_doc_id);
+        }
+        
         print ("Storing annotations");
         HashMap<int, int> pagemap = this.get_db_page_mapping (db_doc_id); // Add back in later
         LinkedList<AnnotationDb?> annotationsForDb = new LinkedList<AnnotationDb> ();
@@ -319,10 +352,88 @@ public class StorageController {
             }
             next_found_parent = annotation_info.iter_next (ref parent_iter);
         }
-        int ins_res = _anno2db (annotationsForDb, overwrite_modus);
+        int ins_res = _anno2db (annotationsForDb);
         if (ins_res > 0) {
             return true;
         }
         return false;
     }
+
+    /**
+     * Get all annotations from the DB for this document (id) and put them in the given TreeStore
+     * */
+    public void get_annotations_from_db (Gtk.TreeStore anno_store, int doc_id) {
+        const string query = """
+        SELECT
+            an.page_nr,
+            an.anno,
+            an.anno_full_line,
+            an.anno_type
+        FROM annotations an
+        WHERE an.page_id in 
+            (SELECT 
+                p.id as page_id
+            FROM pages p
+            JOIN documents d
+            ON p.doc_id = d.id
+            WHERE d.id = ?001)
+        ORDER BY an.anno_type, an.page_nr;""";
+        Statement get_anno_stmt;
+        int rc = current_db.prepare_v2 (query, query.length, out get_anno_stmt);
+        if (rc != Sqlite.OK) {
+            printerr ("SQL error anno_retrieve %d: %s\n", rc, current_db.errmsg ());
+            return;
+        }
+        int doc_id_pos = get_anno_stmt.bind_parameter_index ("?001");
+        get_anno_stmt.bind_int (doc_id_pos, doc_id);
+
+        string last_added_annotation_type = "";
+        string full_annotation_type;
+        string full_annotation;
+        Gtk.TreeIter? tree_iter = null;
+        Gtk.TreeIter anno_iter;
+        while (get_anno_stmt.step () == Sqlite.ROW) {
+            full_annotation_type = get_anno_stmt.column_text (3);
+            if (full_annotation_type != last_added_annotation_type) {
+                // need to add new type
+                anno_store.append (out tree_iter, null);
+                // TODO: Get max-strlen from proper place (or set Global)
+                if (full_annotation_type.length > 12) {
+                    anno_store.set (tree_iter, 0, full_annotation_type[0:12], 3, full_annotation_type, -1);
+                } else {
+                    anno_store.set (tree_iter, 0, full_annotation_type, 3, full_annotation_type, -1);
+                }
+                last_added_annotation_type = full_annotation_type;
+            }
+            if (tree_iter != null) {
+                anno_store.append (out anno_iter, tree_iter);
+            } else {
+                // Shouldn't happen normally but for the compiler/edge cases
+                anno_store.append (out anno_iter, null);
+            }
+            full_annotation = get_anno_stmt.column_text (1);
+            // TODO: See other todo
+            if (full_annotation.length > 12) {
+                anno_store.set (
+                    anno_iter, 
+                    1, full_annotation[0:12],
+                    2, get_anno_stmt.column_int (0), 
+                    3, full_annotation, 
+                    4, get_anno_stmt.column_text (2), 
+                    -1
+                );
+            } else {
+                anno_store.set (
+                    anno_iter, 
+                    1, full_annotation,
+                    2, get_anno_stmt.column_int (0), 
+                    3, full_annotation, 
+                    4, get_anno_stmt.column_text (2), 
+                    -1
+                );
+            }
+        }
+        return;
+    }
+
 }

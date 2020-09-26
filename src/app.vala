@@ -72,6 +72,7 @@ public class TextcodeApp : Gtk.Application {
 
         var title_bar = new TextcodeHeader (main_window);
         title_bar.open_file.connect (this.load_single_document);
+        title_bar.store_sqlite.connect (this.save_annotations);
         main_window.set_titlebar (title_bar);
 
         main_window.show_all ();
@@ -175,13 +176,15 @@ public class TextcodeApp : Gtk.Application {
 
     private void load_single_document (string docloc) {
         anno_controller.clear_store ();
-        anno_overview.set_model (anno_controller.get_current_state ());
-        anno_controller.set_selection_ref (anno_overview.get_selection ());
         StorageController.LoadedDoc doc_plus_id = storage_controller.load_doc (docloc);
         document = doc_plus_id.doc;
         document_db_id = doc_plus_id.doc_id;
         index = 0;
         max_index = document.get_n_pages () - 1;
+        get_annotations (document_db_id);
+        anno_overview.set_model (anno_controller.get_current_state ());
+        anno_controller.set_selection_ref (anno_overview.get_selection ());
+        
         viewer.render_page.begin (this.document.get_page (this.index));
 
         doc_overview.clear_docs ();
@@ -235,11 +238,21 @@ public class TextcodeApp : Gtk.Application {
     }
 
     /**
+     * (Re)load annotations previously stored for current document
+     *  */
+    private void get_annotations(int db_doc_id) {
+        Gtk.TreeStore inmemAnno = anno_controller.get_current_state ();
+        storage_controller.get_annotations_from_db (inmemAnno, db_doc_id);
+    }
+
+    /**
      * Save all stored annotations using the storage-controller
      */
     private void save_annotations() {
-        Gtk.TreeStore inmemAnno = anno_controller.get_current_state ();
-        storage_controller.store_annotations_to_db (document_db_id, inmemAnno, true);
+        if ((document != null) && (document_db_id > 0)) {
+            Gtk.TreeStore inmemAnno = anno_controller.get_current_state ();
+            storage_controller.store_annotations_to_db (document_db_id, inmemAnno, true);
+        }
     }
 
     private void next_page () {
