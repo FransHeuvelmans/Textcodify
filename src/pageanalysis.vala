@@ -10,27 +10,31 @@ public class PageAnalysis {
         double y;
     }
 
+    public struct TextAnnotation {
+        string annotation;
+        string full_line;  // The larger context to help make it unique
+    }
+
     private Page current_page;
     private Rectangle[] current_textboxes;
 
     public PageAnalysis (Page p) {
-        print ("Analyzing page\n");
         this.current_page = p;
         this.current_page.get_text_layout (out this.current_textboxes);
     }
 
     // current_textboxes need manual freeing but this is being done
     // by some other process
-    //  ~PageAnalysis () {
-    //      g_free (current_textboxes);
-    //  }
+    // ~PageAnalysis () {
+    // g_free (current_textboxes);
+    // }
 
     /**
      * Get wordlevel-text for a location on a Poppler page
      */
-    public string get_closest_text (double x, double y) {
+    public TextAnnotation get_closest_text (double x, double y) {
         // Go over all boxes and collect the ones which box in the point
-        var enboxing = new ArrayList<Rectangle?> ();
+        var enboxing = new ArrayList<Rectangle ? > ();
         foreach (Rectangle r in current_textboxes) {
             if (r.x1 < x < r.x2) {
                 if (r.y1 < y < r.y2) {
@@ -40,6 +44,7 @@ public class PageAnalysis {
         }
 
         string txt;
+        string txtline;
         if (enboxing.size > 0) {
             // if list is non-empty, use the smallest box
             int idx_smallest = -1;
@@ -63,19 +68,26 @@ public class PageAnalysis {
                 SelectionStyle.WORD,
                 dr
             );
+            txtline = this.current_page.get_selected_text (
+                SelectionStyle.LINE,
+                dr
+            );
+            return TextAnnotation () {
+                annotation = txt,
+                full_line = txtline
+            };
         } else {
             // Not clicked in a box -> fall back on closest
-            txt = this.text_closest_centerpoint (x, y);
+            return this.text_closest_centerpoint (x, y);
         }
-        return txt;
     }
 
     /**
      * Find the textbox closest to a given point by finding the closest
      * box centerpoints
      */
-    private string text_closest_centerpoint (double x, double y) {
-        var center_points = new ArrayList<CenterPoint?> ();
+    private TextAnnotation text_closest_centerpoint (double x, double y) {
+        var center_points = new ArrayList<CenterPoint ? > ();
         foreach (Rectangle r in current_textboxes) {
             double center_x = r.x1 + ((r.x2 - r.x1) / 2);
             double center_y = r.y1 + ((r.y2 - r.y1) / 2);
@@ -98,8 +110,24 @@ public class PageAnalysis {
             }
         }
         Rectangle dr = current_textboxes[idx_closest];
-        return this.current_page.get_selected_text (
+        var txt = this.current_page.get_selected_text (
             SelectionStyle.WORD, dr
         );
+        var txtline = this.current_page.get_selected_text (
+                SelectionStyle.LINE,
+                dr
+            );
+        return TextAnnotation () {
+            annotation = txt,
+            full_line = txtline
+        };
     }
+
+    /**
+     * Need to work around the fact that we only get a string from poppler
+     * and not a slice location in the text.
+     * Current error-prone solution is to add the full line as extra info
+     * (this does mean that if Poppler here sees it as a separate line, it also
+     * preferably is a separate line in the final full-page-text-string used)
+     */
 }

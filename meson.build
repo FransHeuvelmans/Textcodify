@@ -24,11 +24,11 @@ sources = files(
 executable(meson.project_name(), sources, dependencies: dependencies, install: true)
 
 install_data(
-    join_paths('data', meson.project_name() + '.desktop'),
+    join_paths('data', 'dev.hillman.' + meson.project_name() + '.desktop'),
     install_dir: join_paths(get_option('datadir'), 'applications')
 )
 
 install_data(
-    join_paths('data', meson.project_name() + '.appdata.xml'),
+    join_paths('data', 'dev.hillman.' + meson.project_name() + '.appdata.xml'),
     install_dir: join_paths(get_option('datadir'), 'metainfo')
 )

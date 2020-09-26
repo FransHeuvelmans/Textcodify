@@ -2,7 +2,7 @@
 ​<?xml version="1.0" encoding="UTF-8"?>
 ​<!-- Copyright 2013 First Lastname <your@email.com> -->
 ​<component type="desktop-application">
-​  <id>com.github.fransheuvelmans.textcodify</id>
+​  <id>dev.hillman.textcodify</id>
 ​  <metadata_license>FSFAP</metadata_license>
 ​  <project_license>Blue Oak Model License 1.0.0</project_license>
 ​  <name>Text Codify</name>

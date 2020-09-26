@@ -8,13 +8,17 @@ public class TextcodeApp : Gtk.Application {
         double y;
     }
 
+    // Interface objects
     private Gtk.ApplicationWindow main_window;
     private ViewWindow viewer;
     private DocOverview doc_overview;
+    private StorageController storage_controller;
     private AnnotationOverview anno_overview;
     private AnnotationController anno_controller;
-    private Poppler.Document document;
     private PageAnalysis doc_analysis = null;
+    // Added App state
+    private Poppler.Document? document = null;
+    private int document_db_id = -1;
     private int index = 0;
     private int max_index;
     private bool main_mousebtn_pressed = false;
@@ -23,10 +27,11 @@ public class TextcodeApp : Gtk.Application {
 
     public TextcodeApp () {
         Object (
-            application_id: "textcodify",
+            application_id: "dev.hillman.textcodify",
             flags : ApplicationFlags.FLAGS_NONE
         );
         this.anno_controller = new AnnotationController (12);
+        this.storage_controller = new StorageController ();
     }
 
     protected override void activate () {
@@ -34,11 +39,11 @@ public class TextcodeApp : Gtk.Application {
         doc_overview = new DocOverview ();
         anno_overview = new AnnotationOverview (this.anno_controller.get_current_state ());
         this.anno_controller.set_selection_ref (anno_overview.get_selection ());
+
         main_window.default_height = 600;
         main_window.default_width = 800;
         main_window.title = "textcodify";
         main_window.window_position = WindowPosition.CENTER;
-        main_window.destroy.connect (Gtk.main_quit);
         main_window.key_press_event.connect (this.handle_key_pressevent);
         main_window.key_release_event.connect (this.handle_key_releaseevent);
 
@@ -59,6 +64,9 @@ public class TextcodeApp : Gtk.Application {
         box.pack_start (anno_overview.create_overview (), false, false, 0);
         anno_overview.new_annotation_type.clicked.connect (
             this.new_annotation_dialog
+        );
+        anno_overview.remove_annotation_item.clicked.connect (
+            this.anno_controller.remove_current_selection
         );
         main_window.add (box);
 
@@ -83,18 +91,21 @@ public class TextcodeApp : Gtk.Application {
             this.start_page ();
         } else if (k.keyval == Gdk.Key.End) {
             this.end_page ();
-        } else if (k.keyval == Gdk.Key.p) {
-            this.analyze_page ();
+        } else if (k.keyval == Gdk.Key.r) {
+            anno_controller.remove_current_selection ();
+        } else if (k.keyval == Gdk.Key.a) {
+            this.new_annotation_dialog ();
+        } else if (k.keyval == Gdk.Key.g) {
+            print("g pressed \n");
+            this.save_annotations ();
         }
+        main_window.set_focus (viewer);
         return false;
     }
 
     private bool handle_key_releaseevent (Gdk.EventKey k) {
         if (k.keyval == Gdk.Key.Control_L) {
             viewer.set_active_zooming (false);
-        } else if (k.keyval == Gdk.Key.w) {
-            this.anno_controller.add_annotation (1, "onnat1");
-            print ("annot added\n");
         }
         return false;
     }
@@ -123,8 +134,12 @@ public class TextcodeApp : Gtk.Application {
         } else if (b.button == Gdk.BUTTON_SECONDARY) {
             if (this.doc_analysis != null) {
                 MouseLoc docloc = this.viewer.convert_click_loc (b.x, b.y);
-                string sometext = this.doc_analysis.get_closest_text (docloc.x, docloc.y);
-                print (@"txt: $sometext");
+                PageAnalysis.TextAnnotation anno = this.doc_analysis.get_closest_text (
+                    docloc.x, docloc.y
+                );
+                this.anno_controller.add_annotation (
+                    index, anno.annotation, anno.full_line
+                );
             } else {
                 print ("Page has not been analyzed\n");
             }
@@ -159,7 +174,12 @@ public class TextcodeApp : Gtk.Application {
     }
 
     private void load_single_document (string docloc) {
-        document = StorageController.load_doc (docloc);
+        anno_controller.clear_store ();
+        anno_overview.set_model (anno_controller.get_current_state ());
+        anno_controller.set_selection_ref (anno_overview.get_selection ());
+        StorageController.LoadedDoc doc_plus_id = storage_controller.load_doc (docloc);
+        document = doc_plus_id.doc;
+        document_db_id = doc_plus_id.doc_id;
         index = 0;
         max_index = document.get_n_pages () - 1;
         viewer.render_page.begin (this.document.get_page (this.index));
@@ -170,12 +190,17 @@ public class TextcodeApp : Gtk.Application {
         string[] name_parts = name.split (".");
         name = name_parts[0];
         doc_overview.add_doc (name, document.get_n_pages ());
+
+        this.analyze_page ();
     }
 
     private void analyze_page () {
         this.doc_analysis = new PageAnalysis (this.document.get_page (this.index));
     }
 
+    /**
+     * Create a pop-up dialog for a new annotation type
+     */
     private void new_annotation_dialog () {
         var diag_flags = DialogFlags.DESTROY_WITH_PARENT | DialogFlags.MODAL;
         var diag = new Dialog.with_buttons (
@@ -195,39 +220,53 @@ public class TextcodeApp : Gtk.Application {
         diag.show_all ();
     }
 
+    /**
+     * Custom response signal-connection for the new annotation
+     * dialog
+     */
     private void new_annotation_reaction (Dialog diag, int resp) {
         if (resp == ResponseType.OK) {
             Box content = diag.get_content_area ();
             List<weak Widget> widgets = content.get_children ();
-            Entry field_output = (Entry) widgets.nth_data(1);
+            Entry field_output = (Entry) widgets.nth_data (1);
             this.anno_controller.add_annotation_type (field_output.text);
         }
         diag.destroy ();
     }
 
+    /**
+     * Save all stored annotations using the storage-controller
+     */
+    private void save_annotations() {
+        Gtk.TreeStore inmemAnno = anno_controller.get_current_state ();
+        storage_controller.store_annotations_to_db (document_db_id, inmemAnno, true);
+    }
+
     private void next_page () {
         if (index < max_index) {
             index++;
-            viewer.render_page.begin (this.document.get_page (this.index));
-            this.doc_analysis = null;
+            viewer.render_page.begin (document.get_page (this.index));
+            this.analyze_page ();
         }
     }
 
     private void previous_page () {
         if (index > 0) {
             index--;
-            viewer.render_page.begin (this.document.get_page (this.index));
-            this.doc_analysis = null;
+            viewer.render_page.begin (document.get_page (this.index));
+            this.analyze_page ();
         }
     }
 
     private void start_page () {
         index = 0;
-        viewer.render_page.begin (this.document.get_page (this.index));
+        viewer.render_page.begin (document.get_page (this.index));
+        this.analyze_page ();
     }
 
     private void end_page () {
         index = max_index;
-        viewer.render_page.begin (this.document.get_page (this.index));
+        viewer.render_page.begin (document.get_page (this.index));
+        this.analyze_page ();
     }
 }
