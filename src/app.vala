@@ -17,13 +17,17 @@ public class TextcodeApp : Gtk.Application {
     private AnnotationController anno_controller;
     private PageAnalysis doc_analysis = null;
     // Added App state
-    private Poppler.Document? document = null;
+    private Poppler.Document ? document = null;
     private int document_db_id = -1;
     private int index = 0;
     private int max_index;
     private bool main_mousebtn_pressed = false;
     private MouseLoc oldMouseLoc;
     private double mouseMoveSpeed = 0.8;
+    // Multi doc state
+    private bool single_doc_mode;
+    private Gee.HashMap<string, string> doc_name_loc_map;
+    private string ? last_retrieved;
 
     public TextcodeApp () {
         Object (
@@ -39,6 +43,7 @@ public class TextcodeApp : Gtk.Application {
         doc_overview = new DocOverview ();
         anno_overview = new AnnotationOverview (this.anno_controller.get_current_state ());
         this.anno_controller.set_selection_ref (anno_overview.get_selection ());
+        doc_overview.doc_selection_changed.connect (updated_doc_selection);
 
         main_window.default_height = 600;
         main_window.default_width = 800;
@@ -72,6 +77,7 @@ public class TextcodeApp : Gtk.Application {
 
         var title_bar = new TextcodeHeader (main_window);
         title_bar.open_file.connect (this.load_single_document);
+        title_bar.open_folder.connect (this.load_folder);
         title_bar.store_sqlite.connect (this.save_annotations);
         main_window.set_titlebar (title_bar);
 
@@ -97,7 +103,7 @@ public class TextcodeApp : Gtk.Application {
         } else if (k.keyval == Gdk.Key.a) {
             this.new_annotation_dialog ();
         } else if (k.keyval == Gdk.Key.g) {
-            print("g pressed \n");
+            print ("g pressed \n");
             this.save_annotations ();
         }
         main_window.set_focus (viewer);
@@ -174,32 +180,133 @@ public class TextcodeApp : Gtk.Application {
         return app.run (args);
     }
 
-    private void load_single_document (string docloc) {
+    /**
+     * Convert a string with a path to just the filename
+     * without the suffix
+     */
+    private static string get_filename (string filepath) {
+        string[] loc_parts = filepath.split ("/");
+        string name = loc_parts[loc_parts.length - 1];
+        string[] name_parts = name.split (".");
+        return name_parts[0];
+    }
+
+    /**
+     * Load the document in storage, reset any annotations found
+     * there and set viewer state
+     */
+    private void load_backendstate_document (string docloc) {
         anno_controller.clear_store ();
         StorageController.LoadedDoc doc_plus_id = storage_controller.load_doc (docloc);
         document = doc_plus_id.doc;
         document_db_id = doc_plus_id.doc_id;
         index = 0;
         max_index = document.get_n_pages () - 1;
+        single_doc_mode = true;
         get_annotations (document_db_id);
         anno_overview.set_model (anno_controller.get_current_state ());
         anno_controller.set_selection_ref (anno_overview.get_selection ());
-        
+
         viewer.render_page.begin (this.document.get_page (this.index));
+    }
+
+    /**
+     * Start annotating a single document
+     */
+    private void load_single_document (string docloc) {
+        load_backendstate_document (docloc);
 
         doc_overview.clear_docs ();
-        string[] loc_parts = docloc.split ("/");
-        string name = loc_parts[loc_parts.length - 1];
-        string[] name_parts = name.split (".");
-        name = name_parts[0];
-        doc_overview.add_doc (name, document.get_n_pages ());
+        string name = get_filename (docloc);
+        doc_overview.add_doc_w_pages (name, document.get_n_pages ());
+        doc_overview.select_first_row ();
 
         this.analyze_page ();
+    }
+
+    /**
+     * Prepares the multi-doc-state `doc_name_loc_map` by loading in all
+     * pdf files in the given directory path.
+     */
+    private bool setup_documents (string docfolderloc) {
+        doc_name_loc_map = new Gee.HashMap<string, string>();
+        if (!FileUtils.test (docfolderloc, FileTest.IS_DIR)) {
+            printerr ("Selected location is not a folder\n");
+            return false;
+        }
+        try {
+            Dir dir = Dir.open (docfolderloc, 0);
+            string ? filename = null;
+
+            while ((filename = dir.read_name ()) != null) {
+                string path = Path.build_filename (docfolderloc, filename);
+
+                if (FileUtils.test (path, FileTest.IS_REGULAR)) {
+                    if (path.has_suffix (".pdf")) {
+                        string filename_wo_suffix = get_filename (path);
+                        doc_name_loc_map.set (filename_wo_suffix, path);
+                    }
+                }
+            }
+        } catch (FileError err) {
+            printerr (err.message);
+            return false;
+        }
+        return true;
+    }
+
+    // 2nd load button will setup a full folder
+    private void load_folder (string docfolderloc) {
+        bool setup_success = setup_documents (docfolderloc);
+        if (!setup_success) {
+            printerr ("Loading directory unsuccessful\n");
+            return;
+        }
+        doc_overview.clear_docs ();
+
+        bool first = true;
+        string ? loadfirst = null;
+
+        foreach (string key in doc_name_loc_map.keys) {
+            if (first == true) {
+                loadfirst = key;
+                first = false;
+            }
+            doc_overview.add_doc (key);
+        }
+        doc_overview.select_first_row ();
+        load_folders_document (loadfirst);
+    }
+
+    // load string from map
+    private void load_folders_document (string keyname) {
+        if (!doc_name_loc_map.has_key (keyname)) {
+            printerr ("Unknown folder filename (key)\n");
+            return;
+        }
+        string filepath = doc_name_loc_map.get (keyname);
+        load_backendstate_document (filepath);
+        doc_overview.update_current_pages (document.get_n_pages ());
+        last_retrieved = keyname;
+        this.analyze_page ();
+    }
+
+    private void updated_doc_selection () {
+        if (last_retrieved == null) {
+            // Wait for the first selection to complete
+            return;
+        }
+        string selected_keyname = doc_overview.get_name_current_selection ();
+        if (selected_keyname != last_retrieved) {
+            load_folders_document (selected_keyname);
+        }
     }
 
     private void analyze_page () {
         this.doc_analysis = new PageAnalysis (this.document.get_page (this.index));
     }
+
+    // ---  ---
 
     /**
      * Create a pop-up dialog for a new annotation type
@@ -240,7 +347,7 @@ public class TextcodeApp : Gtk.Application {
     /**
      * (Re)load annotations previously stored for current document
      *  */
-    private void get_annotations(int db_doc_id) {
+    private void get_annotations (int db_doc_id) {
         Gtk.TreeStore inmemAnno = anno_controller.get_current_state ();
         storage_controller.get_annotations_from_db (inmemAnno, db_doc_id);
     }
@@ -248,7 +355,7 @@ public class TextcodeApp : Gtk.Application {
     /**
      * Save all stored annotations using the storage-controller
      */
-    private void save_annotations() {
+    private void save_annotations () {
         if ((document != null) && (document_db_id > 0)) {
             Gtk.TreeStore inmemAnno = anno_controller.get_current_state ();
             storage_controller.store_annotations_to_db (document_db_id, inmemAnno, true);

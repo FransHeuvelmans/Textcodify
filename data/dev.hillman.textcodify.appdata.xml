@@ -1,17 +1,15 @@
 
 ​<?xml version="1.0" encoding="UTF-8"?>
-​<!-- Copyright 2013 First Lastname <your@email.com> -->
 ​<component type="desktop-application">
 ​  <id>dev.hillman.textcodify</id>
 ​  <metadata_license>FSFAP</metadata_license>
-​  <project_license>Blue Oak Model License 1.0.0</project_license>
+​  <project_license>GPL-3.0+</project_license>
 ​  <name>Text Codify</name>
 ​  <summary>Encode unstructured text</summary>
 ​
 ​  <description>
 ​    <p>
-        Encode text by annotating pieces of text and training
-        classifiers 
+        Annotate text by tagging words / sentences.
 ​    </p>
 ​  </description>
 ​
@@ -20,10 +18,10 @@
 ​  <screenshots>
 ​    <screenshot type="default">
 ​      <caption>The options dialog</caption>
-​      <image>http://www.hughsie.com/en_US/main.png</image>
+​      <image>http://hillman.dev/textcodify/main.png</image>
 ​    </screenshot>
 ​    <screenshot>
-​      <image>http://www.hughsie.com/en_US/preferences.png</image>
+​      <image>http://hillman.dev/textcodify/preferences.png</image>
 ​    </screenshot>
 ​  </screenshots>
 ​

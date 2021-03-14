@@ -12,7 +12,7 @@ public class PageAnalysis {
 
     public struct TextAnnotation {
         string annotation;
-        string full_line;  // The larger context to help make it unique
+        string full_line; // The larger context to help make it unique
     }
 
     private Page current_page;
@@ -73,8 +73,8 @@ public class PageAnalysis {
                 dr
             );
             return TextAnnotation () {
-                annotation = txt,
-                full_line = txtline
+                       annotation = txt,
+                       full_line = txtline
             };
         } else {
             // Not clicked in a box -> fall back on closest
@@ -114,12 +114,12 @@ public class PageAnalysis {
             SelectionStyle.WORD, dr
         );
         var txtline = this.current_page.get_selected_text (
-                SelectionStyle.LINE,
-                dr
-            );
+            SelectionStyle.LINE,
+            dr
+        );
         return TextAnnotation () {
-            annotation = txt,
-            full_line = txtline
+                   annotation = txt,
+                   full_line = txtline
         };
     }
 

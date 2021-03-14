@@ -18,13 +18,19 @@ public class StorageController {
     }
 
     private string doc_password;
+    private string db_filename;
 
-    private Database? current_db = null;
+    private Database ? current_db = null;
 
     public StorageController () {
         doc_password = "";
+        db_filename = "textcodify_annotations.db";
     }
 
+    /**
+     * Load a pdf document from the filesystem and store it into the
+     * db (given the location string)
+     */
     public LoadedDoc load_doc (string loc) {
         File doc_file = File.new_for_path (loc);
         Document doc;
@@ -35,11 +41,11 @@ public class StorageController {
             error ("%s", e.message);
         }
         var db_dir = doc_file.get_parent ();
-        var db_loc = db_dir.get_child ("sqlitetest.db").get_path ();
+        var db_loc = db_dir.get_child (db_filename).get_path ();
         if (current_db == null) {
             setup_db (db_loc);
         }
-        int doc_id = sync_new_document_to_db (doc_file, doc); 
+        int doc_id = sync_new_document_to_db (doc_file, doc);
         // Get doc id here and give it to the app to store next to the document itself
         // then when synchronizing, pass it to the store-function
         var docout = LoadedDoc () {
@@ -122,7 +128,7 @@ public class StorageController {
         if (doc_id == -1) {
             string doc_fullloc = doc_loc.get_path ();
             string inquery = ("INSERT INTO documents (hash, name, location) " +
-                @"VALUES($doc_hash, ?001, ?002);");
+                              @"VALUES($doc_hash, ?001, ?002);");
             Statement document_statement;
             int rc = current_db.prepare_v2 (inquery, inquery.length, out document_statement);
             if (rc != Sqlite.OK) {
@@ -146,7 +152,7 @@ public class StorageController {
             /* Always assumes that with a new document, the new pages
              * are stored. */
             string inpagequery = "INSERT INTO pages (doc_id, page_nr, text)" +
-             "VALUES(?001, ?002, ?003);";
+                                 "VALUES(?001, ?002, ?003);";
             Statement page_statement;
             rc = current_db.prepare_v2 (inpagequery, inpagequery.length, out page_statement);
             if (rc != Sqlite.OK) {
@@ -156,7 +162,7 @@ public class StorageController {
             int doc_id_pos = page_statement.bind_parameter_index ("?001");
             int page_nr_pos = page_statement.bind_parameter_index ("?002");
             int text_pos = page_statement.bind_parameter_index ("?003");
-            
+
             var nr_pages = doc.get_n_pages ();
             Page page;
             string pagetxt;
@@ -177,7 +183,7 @@ public class StorageController {
             }
         }
         print (@"debug: Loaded document $doc_id\n");
-        
+
         return doc_id;
     }
 
@@ -190,7 +196,7 @@ public class StorageController {
         Statement check_stmt;
         int found = -1;
         string query = @"SELECT id, hash, name FROM documents WHERE " +
-            @"hash = '$doc_hash' AND name = '$doc_title';";
+                       @"hash = '$doc_hash' AND name = '$doc_title';";
         int rc = current_db.prepare_v2 (query, query.length, out check_stmt, null);
         if (rc != Sqlite.OK) {
             printerr ("SQL error check_doc %d: %s\n", rc, current_db.errmsg ());
@@ -228,7 +234,7 @@ public class StorageController {
         }
         Statement pagemap_stmt;
         string query = "SELECT id, page_nr FROM pages WHERE " +
-            @"doc_id = $db_doc_id;";
+                       @"doc_id = $db_doc_id;";
         int rc = current_db.prepare_v2 (query, query.length, out pagemap_stmt, null);
         if (rc != Sqlite.OK) {
             printerr ("SQL error pagemap %d: %s\n", rc, current_db.errmsg ());
@@ -242,7 +248,7 @@ public class StorageController {
         return map;
     }
 
-    private void _cleandb(int db_doc_id) {
+    private void _cleandb (int db_doc_id) {
         const string query = """
         DELETE FROM annotations as an
         WHERE an.page_id in 
@@ -275,9 +281,9 @@ public class StorageController {
     /**
      * Store a list of annotations in the db
      */
-    private int _anno2db (LinkedList<AnnotationDb?> annotations) {
+    private int _anno2db (LinkedList<AnnotationDb ? > annotations) {
         const string inannoquery = "INSERT INTO annotations (page_id, page_nr, anno, anno_full_line," +
-        "anno_type) VALUES (?001, ?002, ?003, ?004, ?005)";
+                                   "anno_type) VALUES (?001, ?002, ?003, ?004, ?005)";
         Statement anno_insert_statement;
         int rc;
         rc = current_db.prepare_v2 (inannoquery, inannoquery.length, out anno_insert_statement);
@@ -291,7 +297,7 @@ public class StorageController {
         int anno_full_line_pos = anno_insert_statement.bind_parameter_index ("?004");
         int anno_type_pos = anno_insert_statement.bind_parameter_index ("?005");
         int addedAnno = 0;
-        foreach (AnnotationDb? anAnno in annotations) {
+        foreach (AnnotationDb ? anAnno in annotations) {
             if (anAnno != null) {
                 anno_insert_statement.bind_int (page_id_pos, anAnno.page_id);
                 anno_insert_statement.bind_int (page_nr_pos, anAnno.page_nr);
@@ -320,10 +326,10 @@ public class StorageController {
         if (overwrite_modus) {
             _cleandb (db_doc_id);
         }
-        
+
         print ("Storing annotations");
         HashMap<int, int> pagemap = this.get_db_page_mapping (db_doc_id); // Add back in later
-        LinkedList<AnnotationDb?> annotationsForDb = new LinkedList<AnnotationDb> ();
+        LinkedList<AnnotationDb ? > annotationsForDb = new LinkedList<AnnotationDb> ();
         // TODO: Can't use structs ?? (And too many things are still set to public where they don't need to)
         Gtk.TreeIter parent_iter;
         string annotation_type;
@@ -335,18 +341,18 @@ public class StorageController {
             if (annotation_info.iter_has_child (parent_iter)) {
                 bool next_found_child = annotation_info.iter_children (out child_iter, parent_iter);
                 while (next_found_child) {
-                    var storeAnno = AnnotationDb();
+                    var storeAnno = AnnotationDb ();
                     storeAnno.anno_type = annotation_type;
-                    annotation_info.get (child_iter, 
-                        2, out storeAnno.page_nr,
-                        3, out storeAnno.anno,
-                        4, out storeAnno.anno_full_line, -1);
-                    if (pagemap.has_key(storeAnno.page_nr)) {
-                        storeAnno.page_id = pagemap.get(storeAnno.page_nr);
-                        annotationsForDb.add(storeAnno);
+                    annotation_info.get (child_iter,
+                                         2, out storeAnno.page_nr,
+                                         3, out storeAnno.anno,
+                                         4, out storeAnno.anno_full_line, -1);
+                    if (pagemap.has_key (storeAnno.page_nr)) {
+                        storeAnno.page_id = pagemap.get (storeAnno.page_nr);
+                        annotationsForDb.add (storeAnno);
                     }
                     next_found_child = annotation_info.iter_next (ref child_iter);
-                } 
+                }
                 // next while loop to iterate over the child nodes
                 // --> inside this loop we can first print the vals (and then turn that into something useful)
             }
@@ -390,7 +396,7 @@ public class StorageController {
         string last_added_annotation_type = "";
         string full_annotation_type;
         string full_annotation;
-        Gtk.TreeIter? tree_iter = null;
+        Gtk.TreeIter ? tree_iter = null;
         Gtk.TreeIter anno_iter;
         while (get_anno_stmt.step () == Sqlite.ROW) {
             full_annotation_type = get_anno_stmt.column_text (3);
@@ -399,7 +405,7 @@ public class StorageController {
                 anno_store.append (out tree_iter, null);
                 // TODO: Get max-strlen from proper place (or set Global)
                 if (full_annotation_type.length > 12) {
-                    anno_store.set (tree_iter, 0, full_annotation_type[0:12], 3, full_annotation_type, -1);
+                    anno_store.set (tree_iter, 0, full_annotation_type[0 : 12], 3, full_annotation_type, -1);
                 } else {
                     anno_store.set (tree_iter, 0, full_annotation_type, 3, full_annotation_type, -1);
                 }
@@ -415,25 +421,24 @@ public class StorageController {
             // TODO: See other todo
             if (full_annotation.length > 12) {
                 anno_store.set (
-                    anno_iter, 
-                    1, full_annotation[0:12],
-                    2, get_anno_stmt.column_int (0), 
-                    3, full_annotation, 
-                    4, get_anno_stmt.column_text (2), 
+                    anno_iter,
+                    1, full_annotation[0 : 12],
+                    2, get_anno_stmt.column_int (0),
+                    3, full_annotation,
+                    4, get_anno_stmt.column_text (2),
                     -1
                 );
             } else {
                 anno_store.set (
-                    anno_iter, 
+                    anno_iter,
                     1, full_annotation,
-                    2, get_anno_stmt.column_int (0), 
-                    3, full_annotation, 
-                    4, get_anno_stmt.column_text (2), 
+                    2, get_anno_stmt.column_int (0),
+                    3, full_annotation,
+                    4, get_anno_stmt.column_text (2),
                     -1
                 );
             }
         }
         return;
     }
-
 }
