@@ -25,7 +25,6 @@ public class TextcodeApp : Gtk.Application {
     private MouseLoc oldMouseLoc;
     private double mouseMoveSpeed = 0.8;
     // Multi doc state
-    private bool single_doc_mode;
     private Gee.HashMap<string, string> doc_name_loc_map;
     private string ? last_retrieved;
 
@@ -102,8 +101,7 @@ public class TextcodeApp : Gtk.Application {
             anno_controller.remove_current_selection ();
         } else if (k.keyval == Gdk.Key.a) {
             this.new_annotation_dialog ();
-        } else if (k.keyval == Gdk.Key.g) {
-            print ("g pressed \n");
+        } else if (k.keyval == Gdk.Key.s) {
             this.save_annotations ();
         }
         main_window.set_focus (viewer);
@@ -202,7 +200,7 @@ public class TextcodeApp : Gtk.Application {
         document_db_id = doc_plus_id.doc_id;
         index = 0;
         max_index = document.get_n_pages () - 1;
-        single_doc_mode = true;
+
         get_annotations (document_db_id);
         anno_overview.set_model (anno_controller.get_current_state ());
         anno_controller.set_selection_ref (anno_overview.get_selection ());
@@ -216,6 +214,7 @@ public class TextcodeApp : Gtk.Application {
     private void load_single_document (string docloc) {
         load_backendstate_document (docloc);
 
+        last_retrieved = null;
         doc_overview.clear_docs ();
         string name = get_filename (docloc);
         doc_overview.add_doc_w_pages (name, document.get_n_pages ());
@@ -262,6 +261,7 @@ public class TextcodeApp : Gtk.Application {
             printerr ("Loading directory unsuccessful\n");
             return;
         }
+        last_retrieved = null;
         doc_overview.clear_docs ();
 
         bool first = true;

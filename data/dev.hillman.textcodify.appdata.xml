@@ -4,24 +4,21 @@
 ​  <id>dev.hillman.textcodify</id>
 ​  <metadata_license>FSFAP</metadata_license>
 ​  <project_license>GPL-3.0+</project_license>
-​  <name>Text Codify</name>
+​  <name>Textcodify</name>
 ​  <summary>Encode unstructured text</summary>
 ​
 ​  <description>
 ​    <p>
-        Annotate text by tagging words / sentences.
+        Annotate text in PDF files by tagging words and sentences.
 ​    </p>
 ​  </description>
 ​
-​  <launchable type="desktop-id">com.github.fransheuvelmans.textcodify.desktop</launchable>
+​  <launchable type="desktop-id">dev.hillman.textcodify.desktop</launchable>
 ​
 ​  <screenshots>
 ​    <screenshot type="default">
 ​      <caption>The options dialog</caption>
 ​      <image>http://hillman.dev/textcodify/main.png</image>
-​    </screenshot>
-​    <screenshot>
-​      <image>http://hillman.dev/textcodify/preferences.png</image>
 ​    </screenshot>
 ​  </screenshots>
 ​
@@ -32,9 +29,9 @@
 ​  </provides>
 ​
 ​  <releases>
-​    <release version="0.0.1" date="2019-04-12">
+​    <release version="0.0.2" date="2021-03-27">
 ​      <description>
-​        <p>Fixes issues X, Y and Z</p>
+​        <p>A First Release</p>
 ​      </description>
 ​    </release>
 ​  </releases>

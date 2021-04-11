@@ -1,4 +1,4 @@
-project('textcodify', 'vala', 'c')
+project('textcodify', 'vala', 'c', version:'0.0.2')
 
 dependencies = [
     dependency('glib-2.0'),
@@ -32,3 +32,6 @@ install_data(
     join_paths('data', 'dev.hillman.' + meson.project_name() + '.appdata.xml'),
     install_dir: join_paths(get_option('datadir'), 'metainfo')
 )
+
+rpm = import('rpm')
+rpm.generate_spec_template()

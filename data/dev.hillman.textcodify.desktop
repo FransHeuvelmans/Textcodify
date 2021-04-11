@@ -1,6 +1,6 @@
 [Desktop Entry]
-Name=Text Codify
-GenericName=Text Codify
+Name=Textcodify
+GenericName=Textcodify
 Comment=Encode unstructured text
 Categories=Utility;Education;Manual-Processing
 Exec=textcodify

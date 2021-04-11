@@ -21,6 +21,9 @@ public class ViewWindow : ScrolledWindow {
         this.show_all ();
     }
 
+    /**
+     * Render a given page in the current Window
+     */
     public async void render_page (Poppler.Page page) {
         // Getting the right size
         double page_width;
@@ -42,12 +45,18 @@ public class ViewWindow : ScrolledWindow {
         lastRenderedPage = page;
     }
 
-    public void set_active_zooming (bool zoom) {
+    /**
+     * Activate and de-active zooming
+     */
+    public void set_active_zooming (bool zoom_active) {
         if (lastRenderedPage != null) {
-            busyZooming = zoom;
+            busyZooming = zoom_active;
         }
     }
 
+    /**
+     * If zoom active, decrease zoom var
+     */
     public void zoom_down () {
         if (busyZooming) {
             zoom -= 0.1;
@@ -55,6 +64,9 @@ public class ViewWindow : ScrolledWindow {
         }
     }
 
+    /**
+     * If zoom activate, increase zoom var
+     */
     public void zoom_up () {
         if (busyZooming) {
             zoom += 0.1;
@@ -62,6 +74,9 @@ public class ViewWindow : ScrolledWindow {
         }
     }
 
+    /**
+     * Adjust the current view by a delta on x and y axis
+     */
     public void adjust_location (double x_d, double y_d) {
         Adjustment y = this.get_vadjustment ();
         double new_y = y.value + y_d;
@@ -91,6 +106,9 @@ public class ViewWindow : ScrolledWindow {
         }
     }
 
+    /**
+     * Render the same page as last time
+     */
     private void render_last_page () {
         if (lastRenderedPage != null) {
             render_page.begin (lastRenderedPage);
