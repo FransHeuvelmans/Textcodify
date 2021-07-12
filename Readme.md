@@ -11,14 +11,16 @@ But if you have to use PDFs and are in need of a free tool it might be useful.
 
 ## Alternatives
 
-There are better tools out there for non-pdf annotation tasks:
+There are better tools out there for both pdf and non-pdf annotation tasks:
 
+* [Pawls][11] (PDF annotation online by AllenAI)
 * [Prodigy][2] (Payed but supports the great Spacy.io) 
 * [Doccano][1]
 * [Tawseem][3]
 * [Brat][4]
 * [Universal Data Tool][8]
 * [Label studio][7]
+* [Markup][12] (See [their website][13] for more info)
 * [Tagtog][5] (Payed)
 
 [And][10] [more][9]
@@ -41,4 +43,6 @@ Checkout `meson.build` for latest system dependencies.
 [8]: https://github.com/UniversalDataTool/universal-data-tool
 [9]: https://github.com/heartexlabs/awesome-data-labeling#text
 [10]: https://github.com/jsbroks/awesome-dataset-tools#text
-
+[11]: https://github.com/allenai/pawls
+[12]: https://github.com/samueldobbie/markup
+[13]: https://www.getmarkup.com/
